@@ -17,6 +17,20 @@ const audioRegister = Array(8).fill(0);
 
 let programCounter = 0;
 
+/*
+ * Output comparable to `hexdump -C <file>.c8`
+ * */
+function hexDump() {
+  for (let i = 0; i < TOTAL_BYTES; i++) {
+    let n = 0;
+    const byte = memory[i];
+    for (let j = 0; j < 8; j++) {
+      n |= byte[j] << j;
+    }
+    console.log(n.toString(16));
+  }
+}
+
 function loadRomIntoMemory(dataView) {
   const byteLength = dataView.byteLength;
   for (let i = 0; i < byteLength; i++) {
@@ -24,8 +38,8 @@ function loadRomIntoMemory(dataView) {
     for (let j = 0; j < 8; j++) {
       memory[i][j] = 1 & (instruction >> j);
     }
-    // console.log(i, instruction.toString(2), memory[i])
   }
+  // hexDump();
 }
 
 function setRegisterValue(Vx, byte) {
@@ -42,17 +56,17 @@ async function boot() {
     console.log(b1, b2);
 
     // Nibbles
-    const n1 = b1[0] | (b1[1] << 1) | (b1[2] << 2) | (b1[3] << 3);
-    const n2 = b1[4] | (b1[5] << 1) | (b1[6] << 2) | (b1[7] << 3);
-    const n3 = b2[0] | (b2[1] << 1) | (b2[2] << 2) | (b2[3] << 3);
-    const n4 = b2[4] | (b2[5] << 1) | (b2[6] << 2) | (b2[7] << 3);
+    const n1 = b1[4] | (b1[5] << 1) | (b1[6] << 2) | (b1[7] << 3);
+    const n2 = b1[0] | (b1[1] << 1) | (b1[2] << 2) | (b1[3] << 3);
+    const n3 = b2[4] | (b2[5] << 1) | (b2[6] << 2) | (b2[7] << 3);
+    const n4 = b2[0] | (b2[1] << 1) | (b2[2] << 2) | (b2[3] << 3);
 
-    console.log(n1.toString(2), n2.toString(2), n3.toString(2), n4.toString(2))
+    // console.log(n1.toString(16), n2.toString(16), n3.toString(16), n4.toString(16))
 
     switch (n1) {
       case 0x6: {
         const x = n2;
-        kk = n3 << 4 & n4;
+        kk = n3 << 4 | n4;
         setRegisterValue(x, kk);
       }
     }
