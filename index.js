@@ -18,11 +18,13 @@ const registers = Array.from(
 );
 
 const iRegister = Array(16).fill(0);
-const delayRegister = Array(8).fill(0);
-const audioRegister = Array(8).fill(0);
+let delayRegister = 0;
+let audioRegister = 0;
 
 let programCounter = 0x200;
 let stackPointer = 0;
+
+let killed = false;
 
 /*
  * Output comparable to `hexdump -C <file>.c8`
@@ -53,7 +55,6 @@ function setIRegisterValue(byte) {
   for (let i = 0; i < 16; i++) {
     iRegister[i] = 1 & (byte >> i);
   }
-  // console.log(iRegister, byte.toString(2));
 }
 
 function getIRegisterValueInt() {
@@ -67,8 +68,15 @@ function getIRegisterValueInt() {
   return n;
 }
 
+function setDelayTimer(byte) {
+  delayRegister = byte;
+}
+
+function getDelayTimerValue() {
+  return delayRegister;
+}
+
 function setMemoryValue(addr, byte) {
-  console.log({ addr, byte });
   for (let i = 0; i < 8; i++) {
     memory[addr][i] = 1 & (byte >> (i));
   }
@@ -96,6 +104,14 @@ function getStackValue(addr) {
   return n;
 }
 
+function getRegisterValue(Vx) {
+  let n = 0;
+  for (let i = 0; i < 8; i++) {
+    n |= (registers[Vx][i] << i);
+  }
+  return n;
+}
+
 function setRegisterValue(Vx, byte) {
   for (let i = 0; i < 8; i++) {
     registers[Vx][i] = 1 & (byte << i);
@@ -103,8 +119,56 @@ function setRegisterValue(Vx, byte) {
   // console.log(registers[Vx], byte.toString(2));
 }
 
+function loadHexDigitSprites() {
+  const fontSprites = [
+    // 0
+    0xF0, 0x90, 0x90, 0x90, 0xF0,
+    // 1
+    0x20, 0x60, 0x20, 0x20, 0x70,
+    // 2
+    0xF0, 0x10, 0xF0, 0x80, 0xF0,
+    // 3
+    0xF0, 0x10, 0xF0, 0x10, 0xF0,
+    // 4
+    0x90, 0x90, 0xF0, 0x10, 0x10,
+    // 5
+    0xF0, 0x80, 0xF0, 0x10, 0xF0,
+    // 6
+    0xF0, 0x80, 0xF0, 0x90, 0xF0,
+    // 7
+    0xF0, 0x10, 0x20, 0x40, 0x40,
+    // 8
+    0xF0, 0x90, 0xF0, 0x90, 0xF0,
+    // 9
+    0xF0, 0x90, 0xF0, 0x10, 0xF0,
+    // A
+    0xF0, 0x90, 0xF0, 0x90, 0x90,
+    // B
+    0xE0, 0x90, 0xE0, 0x90, 0xE0,
+    // C
+    0xF0, 0x80, 0x80, 0x80, 0xF0,
+    // D
+    0xE0, 0x90, 0x90, 0x90, 0xE0,
+    // E
+    0xF0, 0x80, 0xF0, 0x80, 0xF0,
+    // F
+    0xF0, 0x80, 0xF0, 0x80, 0x80,
+  ];
+
+  // Write each byte into memory starting at address 0x000
+  for (let i = 0; i < fontSprites.length; i++) {
+    setMemoryValue(i, fontSprites[i]);
+  }
+}
+
 async function boot() {
-  while (true) {
+  loadHexDigitSprites();
+  const delayTimerInterval = setInterval(() => {
+    if (delayRegister > 0) {
+      delayRegister -= 1;
+    }
+  }, 1000 / 60); // 60 hz
+  while (!killed) {
     const b1 = memory[programCounter];
     const b2 = memory[programCounter + 1];
 
@@ -125,16 +189,13 @@ async function boot() {
           programCounter = getStackValue(stackPointer);
           stackPointer -= 1;
           autoIncrement = false;
-          console.log(programCounter.toString(16))
+          break;
         }
-        break;
       }
       case 0x2: {
         programCounter += 2;
-        console.log({ programCounter })
         setStackValue(stackPointer, programCounter);
         programCounter = n2 << 8 | n3 << 4 | n4;
-        console.log({ programCounter })
         autoIncrement = false;
         break;
       }
@@ -143,6 +204,12 @@ async function boot() {
         kk = n3 << 4 | n4;
         setRegisterValue(x, kk);
         break;
+      }
+      case 0x7: {
+        const Vx = n2;
+        const kk = n3 << 4 | n4;
+        const currVxValue = getRegisterValue(Vx);
+        setRegisterValue(Vx, currVxValue + kk);
       }
       case 0xA: {
         const nnn = n2 << 8 | n3 << 4 | n4;
@@ -158,6 +225,40 @@ async function boot() {
         renderSprite(spriteBytes, n2, n3);
         break;
       }
+      case 0xF: {
+        const n34 = n3 << 4 | n4;
+        if (n34 === 0x33) {
+          const ones = n2 & 1;
+          const tens = Math.floor(n2 / 10) % 10;
+          const hundreds = Math.floor(n2 / 100) % 100;
+          const iVal = getIRegisterValueInt();
+          setMemoryValue(iVal, ones);
+          setMemoryValue(iVal + 1, tens);
+          setMemoryValue(iVal + 2, hundreds);
+          break;
+        } else if (n34 === 0x65) {
+          const Vx = n2;
+          const iValue = getIRegisterValueInt();
+          for (let i = 0; i <= Vx; i++) {
+            const memValue = getMemoryValue(iValue + i);
+            setRegisterValue(i, memValue);
+          }
+          break;
+        } else if (n34 === 0x29) {
+          const Vx = n2;
+          setIRegisterValue(Vx * 5);
+          break;
+        } else if (n34 === 0x15) {
+          setDelayTimer(n2);
+          break;
+        } else if (n34 === 0x07) {
+          setRegisterValue(n2, getDelayTimerValue);
+          break;
+        }
+      }
+      default: {
+        console.log('UNHANDLED INSTRUCTION');
+      }
     }
 
     if (autoIncrement) {
@@ -166,6 +267,7 @@ async function boot() {
 
     await new Promise(res => { setTimeout(() => { res() }, 100); });
   }
+  clearInterval(delayTimerInterval);
 }
 
 const PIXEL_SIDE_LENGTH = 18;
@@ -190,10 +292,10 @@ function renderSprite(spriteBytes, x, y) {
 
 function setPixelState(x, y, color) {
   ctx.fillStyle = color ? 'white' : 'black';
-  console.log(color ? 'white' : 'black')
   ctx.fillRect(x * PIXEL_SIDE_LENGTH, y * PIXEL_SIDE_LENGTH, PIXEL_SIDE_LENGTH, PIXEL_SIDE_LENGTH);
 }
 
+// For testing: identity matrix
 // for (let i = 0; i < 20; i++) {
 //   setPixelState(i, i, 0);
 // }
@@ -211,4 +313,7 @@ fileInput.addEventListener('change', (event) => {
   reader.readAsArrayBuffer(file);
 });
 
-
+window.onload = () => {
+  const killButton = document.getElementById('killButton');
+  killButton.addEventListener('click', () => { killed = true; })
+}
