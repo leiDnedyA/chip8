@@ -296,7 +296,7 @@ async function boot() {
         const x = n2;
         const kk = n3 << 4 | n4;
         const Vx = getRegisterValue(x);
-        setRegisterValue(x, Vx + kk);
+        setRegisterValue(x, (Vx + kk) & 0xFF);
         break;
       }
       case 0x8: {
@@ -335,7 +335,7 @@ async function boot() {
       case 0x9: {
         if (n4 === 0x0) {
           const x = n2;
-          const y = n2;
+          const y = n3;
           const Vx = getRegisterValue(x);
           const Vy = getRegisterValue(y);
           if (Vx !== Vy) {
@@ -371,7 +371,8 @@ async function boot() {
         const n23 = n3 << 4 | n4;
         if (n23 === 0xA1) {
           const x = n2;
-          if (!keysDown[x]) {
+          const Vx = getRegisterValue(x);
+          if (!keysDown[Vx]) {
             programCounter += 2;
           }
           break;
@@ -381,32 +382,32 @@ async function boot() {
       }
       case 0xF: {
         const n34 = n3 << 4 | n4;
+        const Vx = getRegisterValue(n2);
         if (n34 === 0x33) {
-          const ones = n2 & 1;
-          const tens = Math.floor(n2 / 10) % 10;
-          const hundreds = Math.floor(n2 / 100) % 100;
+          const ones = Vx % 10;
+          const tens = Math.floor(Vx / 10) % 10;
+          const hundreds = Math.floor(Vx / 100) % 10;
           const iVal = getIRegisterValueInt();
           setMemoryValue(iVal, ones);
           setMemoryValue(iVal + 1, tens);
           setMemoryValue(iVal + 2, hundreds);
           break;
         } else if (n34 === 0x65) {
-          const Vx = n2;
+          const x = n2;
           const iValue = getIRegisterValueInt();
-          for (let i = 0; i <= Vx; i++) {
+          for (let i = 0; i <= x; i++) {
             const memValue = getMemoryValue(iValue + i);
             setRegisterValue(i, memValue);
           }
           break;
         } else if (n34 === 0x29) {
-          const Vx = n2;
           setIRegisterValue(Vx * 5);
           break;
         } else if (n34 === 0x15) {
-          setDelayTimer(n2);
+          setDelayTimer(Vx);
           break;
         } else if (n34 === 0x07) {
-          setRegisterValue(n2, getDelayTimerValue);
+          setRegisterValue(n2, getDelayTimerValue());
           break;
         }
         console.log('UNHANDLED CASE');
@@ -421,7 +422,7 @@ async function boot() {
       programCounter += 2;
     }
 
-    await new Promise(res => { setTimeout(() => { res() }, 1); });
+    await new Promise(res => { setTimeout(() => { res() }, 2); });
   }
 
   clearInterval(delayTimerInterval);
@@ -439,7 +440,10 @@ canvas.width = WIDTH * PIXEL_SIDE_LENGTH;
 canvas.height = HEIGHT * PIXEL_SIDE_LENGTH;
 const ctx = canvas.getContext('2d');
 
-ctx.fillStyle = 'black';
+const DARK_COLOR = '#008';
+const LIGHT_COLOR = '#AAF';
+
+ctx.fillStyle = DARK_COLOR;
 ctx.fillRect(0, 0, WIDTH * PIXEL_SIDE_LENGTH, HEIGHT * PIXEL_SIDE_LENGTH);
 
 const pixelGrid = Array.from({
@@ -462,9 +466,9 @@ function setPixelState(unwrappedX, unwrappedY, color) {
 
   const currPixelValue = pixelGrid?.[x]?.[y];
   const newPixelValue = currPixelValue ^ color;
-  ctx.fillStyle = newPixelValue ? 'white' : 'black';
-  const isCollision = (currPixelValue & color) | (!currPixelValue & !color);
-  pixelGrid[x][y] = color;
+  ctx.fillStyle = newPixelValue ? LIGHT_COLOR : DARK_COLOR;
+  const isCollision = (currPixelValue & color);
+  pixelGrid[x][y] = newPixelValue;
   ctx.fillRect(x * PIXEL_SIDE_LENGTH, y * PIXEL_SIDE_LENGTH, PIXEL_SIDE_LENGTH, PIXEL_SIDE_LENGTH);
   return isCollision ? 1 : 0;
 }
