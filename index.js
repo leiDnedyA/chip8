@@ -450,20 +450,23 @@ function renderSprite(spriteBytes, x, y) {
   let isCollision = 0;
   for (let i = 0; i < spriteBytes.length; i++) {
     for (let j = 0; j < 8; j++) {
-      isCollision |= setPixelState(x + j, y + i, spriteBytes[i][j]);
+      isCollision |= setPixelState(x + j, y + i, spriteBytes[i][7 - j]);
     }
   }
   VF = isCollision;
 }
 
-function setPixelState(x, y, color) {
-  const currColor = pixelGrid?.[x]?.[y];
-  ctx.fillStyle = currColor ^ color ? 'white' : 'black';
-  ctx.fillStyle = color ? 'white' : 'black';
-  const isCollision = currColor & color;
+function setPixelState(unwrappedX, unwrappedY, color) {
+  const x = unwrappedX % WIDTH;
+  const y = unwrappedY % HEIGHT;
+
+  const currPixelValue = pixelGrid?.[x]?.[y];
+  const newPixelValue = currPixelValue ^ color;
+  ctx.fillStyle = newPixelValue ? 'white' : 'black';
+  const isCollision = (currPixelValue & color) | (!currPixelValue & !color);
   pixelGrid[x][y] = color;
   ctx.fillRect(x * PIXEL_SIDE_LENGTH, y * PIXEL_SIDE_LENGTH, PIXEL_SIDE_LENGTH, PIXEL_SIDE_LENGTH);
-  return isCollision;
+  return isCollision ? 1 : 0;
 }
 
 fileInput.addEventListener('change', (event) => {
