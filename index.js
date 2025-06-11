@@ -129,7 +129,7 @@ function getRegisterValue(Vx) {
 
 function setRegisterValue(Vx, byte) {
   for (let i = 0; i < 8; i++) {
-    registers[Vx][i] = 1 & (byte << i);
+    registers[Vx][i] = 1 & (byte >> i);
   }
   // console.log(registers[Vx], byte.toString(2));
 }
@@ -216,14 +216,15 @@ async function boot() {
   window.addEventListener('keyup', keyUpCallback);
 
   while (!killed) {
-    const b1 = memory[programCounter];
-    const b2 = memory[programCounter + 1];
+    const opcode = (getMemoryValue(programCounter) << 8) | getMemoryValue(programCounter + 1);
 
     // Nibbles
-    const n1 = b1[4] | (b1[5] << 1) | (b1[6] << 2) | (b1[7] << 3);
-    const n2 = b1[0] | (b1[1] << 1) | (b1[2] << 2) | (b1[3] << 3);
-    const n3 = b2[4] | (b2[5] << 1) | (b2[6] << 2) | (b2[7] << 3);
-    const n4 = b2[0] | (b2[1] << 1) | (b2[2] << 2) | (b2[3] << 3);
+    const n1 = (opcode & 0xF000) >> 12;
+    const n2 = (opcode & 0x0F00) >> 8;
+    const n3 = (opcode & 0x00F0) >> 4;
+    const n4 = (opcode & 0x000F);
+
+
 
     console.log(n1.toString(16), n2.toString(16), n3.toString(16), n4.toString(16))
 
@@ -238,14 +239,17 @@ async function boot() {
           autoIncrement = false;
           break;
         }
+        console.log('UNHANDLED CASE');
+        break;
       }
       case 0x1: {
-        programCounter = n3 << 8 | n2 << 4 | n1;
+        programCounter = n2 << 8 | n3 << 4 | n4;
+        autoIncrement = false;
         break;
       }
       case 0x2: {
-        programCounter += 2;
-        setStackValue(stackPointer, programCounter);
+        stackPointer += 1;
+        setStackValue(stackPointer, programCounter + 2);
         programCounter = n2 << 8 | n3 << 4 | n4;
         autoIncrement = false;
         break;
@@ -287,9 +291,11 @@ async function boot() {
           const y = n3;
           const Vx = getRegisterValue(x);
           const Vy = getRegisterValue(y);
-          setRegisterValue(x, Vx & Vy);
+          setRegisterValue(x, (Vx & Vy) & 0xFF);
           break;
         }
+        console.log('UNHANDLED CASE');
+        break;
       }
       case 0x9: {
         if (n4 === 0x0) {
@@ -302,6 +308,8 @@ async function boot() {
           }
           break;
         }
+        console.log('UNHANDLED CASE');
+        break;
       }
       case 0xA: {
         const nnn = n2 << 8 | n3 << 4 | n4;
@@ -311,7 +319,7 @@ async function boot() {
       case 0xC: {
         const x = n2;
         const kk = n3 << 4 | n4;
-        const rand = Math.floor(Math.random() * 255);
+        const rand = Math.floor(Math.random() * 256);
         setRegisterValue(x, kk & rand);
         break;
       }
@@ -321,7 +329,7 @@ async function boot() {
         const n = n4;
         const iRegisterValue = getIRegisterValueInt();
         const spriteBytes = memory.slice(iRegisterValue, iRegisterValue + n);
-        renderSprite(spriteBytes, x, y);
+        renderSprite(spriteBytes, getRegisterValue(x), getRegisterValue(y));
         break;
       }
       case 0xE: {
@@ -333,6 +341,8 @@ async function boot() {
           }
           break;
         }
+        console.log('UNHANDLED CASE');
+        break;
       }
       case 0xF: {
         const n34 = n3 << 4 | n4;
@@ -364,6 +374,8 @@ async function boot() {
           setRegisterValue(n2, getDelayTimerValue);
           break;
         }
+        console.log('UNHANDLED CASE');
+        break;
       }
       default: {
         console.log('UNHANDLED INSTRUCTION');
@@ -403,7 +415,7 @@ function renderSprite(spriteBytes, x, y) {
   let isCollision = 0;
   for (let i = 0; i < spriteBytes.length; i++) {
     for (let j = 0; j < 8; j++) {
-      isCollision |= setPixelState(x + i, y + j, spriteBytes[i][j]);
+      isCollision |= setPixelState(x + j, y + i, spriteBytes[i][j]);
     }
   }
   VF = isCollision;
@@ -412,17 +424,11 @@ function renderSprite(spriteBytes, x, y) {
 function setPixelState(x, y, color) {
   const currColor = pixelGrid[x][y];
   ctx.fillStyle = currColor ^ color ? 'white' : 'black';
-  const isCollision = currColor === color;
+  const isCollision = currColor & color;
   pixelGrid[x][y] = color;
   ctx.fillRect(x * PIXEL_SIDE_LENGTH, y * PIXEL_SIDE_LENGTH, PIXEL_SIDE_LENGTH, PIXEL_SIDE_LENGTH);
   return isCollision;
 }
-
-// For testing: identity matrix
-// for (let i = 0; i < 20; i++) {
-//   setPixelState(i, i, 0);
-// }
-
 
 fileInput.addEventListener('change', (event) => {
   const file = event.target.files[0];
