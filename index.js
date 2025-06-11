@@ -5,24 +5,38 @@ const memory = Array.from(
   { length: TOTAL_BYTES },
   () => Array(8).fill(0)
 );
-
 const stack = Array.from(
   { length: 16 },
   () => Array(16).fill(0)
 );
-
-
 const registers = Array.from(
   { length: 16 },
   () => Array(8).fill(0)
 );
-
 const iRegister = Array(16).fill(0);
 let delayRegister = 0;
 let audioRegister = 0;
-
 let programCounter = 0x200;
 let stackPointer = 0;
+
+const keysDown = {
+  0x0: false,
+  0x1: false,
+  0x2: false,
+  0x3: false,
+  0x4: false,
+  0x5: false,
+  0x6: false,
+  0x7: false,
+  0x8: false,
+  0x9: false,
+  0xA: false,
+  0xB: false,
+  0xC: false,
+  0xD: false,
+  0xE: false,
+  0xF: false,
+};
 
 let killed = false;
 
@@ -161,13 +175,45 @@ function loadHexDigitSprites() {
   }
 }
 
+const keyboardToHardwareKeys = {
+  '1': 0x1,
+  '2': 0x2,
+  '3': 0x3,
+  '4': 0xC,
+  'q': 0x4,
+  'w': 0x5,
+  'e': 0x6,
+  'r': 0xD,
+  'a': 0x7,
+  's': 0x8,
+  'd': 0x9,
+  'f': 0xE,
+  'z': 0xA,
+  'x': 0x0,
+  'c': 0xB,
+  'v': 0xF
+}
+
+function keyDownCallback(e) {
+  keysDown[keyboardToHardwareKeys[e.key.toLowerCase()]] = true;
+}
+
+function keyUpCallback(e) {
+  keysDown[keyboardToHardwareKeys[e.key.toLowerCase()]] = false;
+}
+
 async function boot() {
   loadHexDigitSprites();
+
   const delayTimerInterval = setInterval(() => {
     if (delayRegister > 0) {
       delayRegister -= 1;
     }
   }, 1000 / 60); // 60 hz
+
+  window.addEventListener('keydown', keyDownCallback);
+  window.addEventListener('keyup', keyUpCallback);
+
   while (!killed) {
     const b1 = memory[programCounter];
     const b2 = memory[programCounter + 1];
@@ -192,11 +238,33 @@ async function boot() {
           break;
         }
       }
+      case 0x1: {
+        programCounter = n3 << 8 | n2 << 4 | n1;
+        break;
+      }
       case 0x2: {
         programCounter += 2;
         setStackValue(stackPointer, programCounter);
         programCounter = n2 << 8 | n3 << 4 | n4;
         autoIncrement = false;
+        break;
+      }
+      case 0x3: {
+        const x = n2;
+        const kk = n3 << 4 | n4;
+        const Vx = getRegisterValue(x);
+        if (kk === Vx) {
+          programCounter += 2;
+        }
+        break;
+      }
+      case 0x4: {
+        const x = n2;
+        const kk = n3 << 4 | n4;
+        const Vx = getRegisterValue(x);
+        if (Vx !== kk) {
+          programCounter += 2;
+        }
         break;
       }
       case 0x6: {
@@ -210,10 +278,40 @@ async function boot() {
         const kk = n3 << 4 | n4;
         const currVxValue = getRegisterValue(Vx);
         setRegisterValue(Vx, currVxValue + kk);
+        break;
+      }
+      case 0x8: {
+        if (n4 === 0x2) {
+          const x = n2;
+          const y = n3;
+          const Vx = getRegisterValue(x);
+          const Vy = getRegisterValue(y);
+          setRegisterValue(x, Vx & Vy);
+          break;
+        }
+      }
+      case 0x9: {
+        if (n4 === 0x0) {
+          const x = n2;
+          const y = n2;
+          const Vx = getRegisterValue(x);
+          const Vy = getRegisterValue(y);
+          if (Vx != Vy) {
+            programCounter += 2;
+          }
+          break;
+        }
       }
       case 0xA: {
         const nnn = n2 << 8 | n3 << 4 | n4;
         setIRegisterValue(nnn);
+        break;
+      }
+      case 0xC: {
+        const x = n2;
+        const kk = n3 << 4 | n4;
+        const rand = Math.round(Math.random() * Math.pow(2, 8));
+        setRegisterValue(x, kk & rand);
         break;
       }
       case 0xD: {
@@ -224,6 +322,16 @@ async function boot() {
         console.log(spriteBytes);
         renderSprite(spriteBytes, n2, n3);
         break;
+      }
+      case 0xE: {
+        const n23 = n3 << 4 | n4;
+        if (n23 === 0xA1) {
+          const x = n2;
+          if (!keysDown[x]) {
+            programCounter += 2;
+          }
+          break;
+        }
       }
       case 0xF: {
         const n34 = n3 << 4 | n4;
@@ -267,7 +375,11 @@ async function boot() {
 
     await new Promise(res => { setTimeout(() => { res() }, 100); });
   }
+
   clearInterval(delayTimerInterval);
+
+  window.removeEventListener('keydown', keyDownCallback);
+  window.removeEventListener('keyup', keyUpCallback);
 }
 
 const PIXEL_SIDE_LENGTH = 18;
