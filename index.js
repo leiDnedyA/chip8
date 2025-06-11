@@ -16,6 +16,7 @@ const registers = Array.from(
 const iRegister = Array(16).fill(0);
 let delayRegister = 0;
 let audioRegister = 0;
+let VF = 0;
 let programCounter = 0x200;
 let stackPointer = 0;
 
@@ -269,15 +270,15 @@ async function boot() {
       }
       case 0x6: {
         const x = n2;
-        kk = n3 << 4 | n4;
+        const kk = n3 << 4 | n4;
         setRegisterValue(x, kk);
         break;
       }
       case 0x7: {
-        const Vx = n2;
+        const x = n2;
         const kk = n3 << 4 | n4;
-        const currVxValue = getRegisterValue(Vx);
-        setRegisterValue(Vx, currVxValue + kk);
+        const Vx = getRegisterValue(x);
+        setRegisterValue(x, Vx + kk);
         break;
       }
       case 0x8: {
@@ -296,7 +297,7 @@ async function boot() {
           const y = n2;
           const Vx = getRegisterValue(x);
           const Vy = getRegisterValue(y);
-          if (Vx != Vy) {
+          if (Vx !== Vy) {
             programCounter += 2;
           }
           break;
@@ -310,17 +311,17 @@ async function boot() {
       case 0xC: {
         const x = n2;
         const kk = n3 << 4 | n4;
-        const rand = Math.round(Math.random() * Math.pow(2, 8));
+        const rand = Math.floor(Math.random() * 255);
         setRegisterValue(x, kk & rand);
         break;
       }
       case 0xD: {
-        console.log('writing to screen')
+        const x = n2;
+        const y = n3;
+        const n = n4;
         const iRegisterValue = getIRegisterValueInt();
-        console.log(iRegisterValue.toString(16));
-        const spriteBytes = memory.slice(iRegisterValue, iRegisterValue + n4);
-        console.log(spriteBytes);
-        renderSprite(spriteBytes, n2, n3);
+        const spriteBytes = memory.slice(iRegisterValue, iRegisterValue + n);
+        renderSprite(spriteBytes, x, y);
         break;
       }
       case 0xE: {
@@ -394,17 +395,27 @@ const ctx = canvas.getContext('2d');
 ctx.fillStyle = 'black';
 ctx.fillRect(0, 0, WIDTH * PIXEL_SIDE_LENGTH, HEIGHT * PIXEL_SIDE_LENGTH);
 
+const pixelGrid = Array.from({
+  length: WIDTH
+}, () => Array(HEIGHT).fill(0));
+
 function renderSprite(spriteBytes, x, y) {
+  let isCollision = 0;
   for (let i = 0; i < spriteBytes.length; i++) {
     for (let j = 0; j < 8; j++) {
-      setPixelState(x + i, y + j, spriteBytes[i][j]);
+      isCollision |= setPixelState(x + i, y + j, spriteBytes[i][j]);
     }
   }
+  VF = isCollision;
 }
 
 function setPixelState(x, y, color) {
-  ctx.fillStyle = color ? 'white' : 'black';
+  const currColor = pixelGrid[x][y];
+  ctx.fillStyle = currColor ^ color ? 'white' : 'black';
+  const isCollision = currColor === color;
+  pixelGrid[x][y] = color;
   ctx.fillRect(x * PIXEL_SIDE_LENGTH, y * PIXEL_SIDE_LENGTH, PIXEL_SIDE_LENGTH, PIXEL_SIDE_LENGTH);
+  return isCollision;
 }
 
 // For testing: identity matrix
