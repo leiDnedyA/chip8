@@ -278,6 +278,20 @@ async function boot() {
         setRegisterValue(x, kk);
         break;
       }
+      case 0x5: {
+        if (n4 !== 0x0) {
+          console.log('INVALID INSTRUCTION!');
+          break;
+        }
+        const x = n2;
+        const y = n3;
+        const Vx = getRegisterValue(x);
+        const Vy = getRegisterValue(y);
+        if (Vx === Vy) {
+          programCounter += 2;
+        }
+        break;
+      }
       case 0x7: {
         const x = n2;
         const kk = n3 << 4 | n4;
@@ -286,12 +300,33 @@ async function boot() {
         break;
       }
       case 0x8: {
-        if (n4 === 0x2) {
-          const x = n2;
-          const y = n3;
-          const Vx = getRegisterValue(x);
-          const Vy = getRegisterValue(y);
+        const x = n2;
+        const y = n3;
+        const Vx = getRegisterValue(x);
+        const Vy = getRegisterValue(y);
+        if (n4 === 0x0) {
+          setRegisterValue(x, Vy);
+          break;
+        } else if (n4 === 0x1) {
+          setRegisterValue(x, Vx | Vy);
+          break;
+        } else if (n4 === 0x2) {
           setRegisterValue(x, (Vx & Vy) & 0xFF);
+          break;
+        } else if (n4 === 0x3) {
+          setRegisterValue(x, (Vx ^ Vy) & 0xFF);
+          break;
+        } else if (n4 === 0x4) {
+          setRegisterValue(x, (Vx + Vy) & 0xFF);
+          VF = Vx + Vy > 255 ? 1 : 0;
+          break;
+        } else if (n4 === 0x5) {
+          setRegisterValue(x, (Vx - Vy) & 0xFF);
+          VF = Vx > Vy ? 1 : 0;
+          break;
+        } else if (n4 === 0x6) {
+          VF = Vx & 1;
+          setRegisterValue(x, Math.floor(Vx / 2));
           break;
         }
         console.log('UNHANDLED CASE');
@@ -386,7 +421,7 @@ async function boot() {
       programCounter += 2;
     }
 
-    await new Promise(res => { setTimeout(() => { res() }, 100); });
+    await new Promise(res => { setTimeout(() => { res() }, 1); });
   }
 
   clearInterval(delayTimerInterval);
@@ -422,8 +457,9 @@ function renderSprite(spriteBytes, x, y) {
 }
 
 function setPixelState(x, y, color) {
-  const currColor = pixelGrid[x][y];
+  const currColor = pixelGrid?.[x]?.[y];
   ctx.fillStyle = currColor ^ color ? 'white' : 'black';
+  ctx.fillStyle = color ? 'white' : 'black';
   const isCollision = currColor & color;
   pixelGrid[x][y] = color;
   ctx.fillRect(x * PIXEL_SIDE_LENGTH, y * PIXEL_SIDE_LENGTH, PIXEL_SIDE_LENGTH, PIXEL_SIDE_LENGTH);
