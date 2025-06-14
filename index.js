@@ -1,19 +1,10 @@
 const fileInput = document.getElementById('fileInput');
 const TOTAL_BYTES = 4096
 
-const memory = Array.from(
-  { length: TOTAL_BYTES },
-  () => Array(8).fill(0)
-);
-const stack = Array.from(
-  { length: 16 },
-  () => Array(16).fill(0)
-);
-const registers = Array.from(
-  { length: 16 },
-  () => Array(8).fill(0)
-);
-const iRegister = Array(16).fill(0);
+const memory = new Uint8Array(TOTAL_BYTES);
+const stack = new Uint16Array(16);
+const registers = new Uint8Array(16);
+const iRegister = 0;
 let delayRegister = 0;
 let audioRegister = 0;
 let VF = 0;
@@ -59,28 +50,17 @@ function loadRomIntoMemory(dataView) {
   const byteLength = dataView.byteLength;
   for (let i = 0; i < byteLength; i++) {
     const instruction = dataView.getUint8(i);
-    for (let j = 0; j < 8; j++) {
-      memory[i + 0x200][j] = 1 & (instruction >> j);
-    }
+    memory[i + 0x200] = instruction;
   }
   // hexDump();
 }
 
 function setIRegisterValue(byte) {
-  for (let i = 0; i < 16; i++) {
-    iRegister[i] = 1 & (byte >> i);
-  }
+  iRegister = byte;
 }
 
 function getIRegisterValueInt() {
-  let n = 0;
-  // console.log(iRegister)
-  for (let i = 0; i < 16; i++) {
-    // console.log(iRegister[i])
-    n |= (iRegister[i] << i);
-  }
-  // console.log(n.toString(2))
-  return n;
+  return iRegister;
 }
 
 function setDelayTimer(byte) {
@@ -92,46 +72,27 @@ function getDelayTimerValue() {
 }
 
 function setMemoryValue(addr, byte) {
-  for (let i = 0; i < 8; i++) {
-    memory[addr][i] = 1 & (byte >> (i));
-  }
+  memory[addr] = byte;
 }
 
 function getMemoryValue(addr) {
-  let n = 0;
-  for (let i = 0; i < 8; i++) {
-    n |= (memory[addr][i] << i);
-  }
-  return n;
+  return memory[addr];
 }
 
 function setStackValue(addr, value) {
-  for (let i = 0; i < 16; i++) {
-    stack[addr][i] = 1 & (value >> (i));
-  }
+  stack[addr] = value;
 }
 
 function getStackValue(addr) {
-  let n = 0;
-  for (let i = 0; i < 16; i++) {
-    n |= (stack[addr][i] << i);
-  }
-  return n;
+  return stack[addr];
 }
 
-function getRegisterValue(Vx) {
-  let n = 0;
-  for (let i = 0; i < 8; i++) {
-    n |= (registers[Vx][i] << i);
-  }
-  return n;
+function getRegisterValue(x) {
+  return registers[x]
 }
 
-function setRegisterValue(Vx, byte) {
-  for (let i = 0; i < 8; i++) {
-    registers[Vx][i] = 1 & (byte >> i);
-  }
-  // console.log(registers[Vx], byte.toString(2));
+function setRegisterValue(x, byte) {
+  registers[x] = byte;
 }
 
 function loadHexDigitSprites() {
@@ -422,7 +383,7 @@ async function boot() {
       programCounter += 2;
     }
 
-    await new Promise(res => { setTimeout(() => { res() }, 2); });
+    // await new Promise(res => { setTimeout(() => { res() }, 2); });
   }
 
   clearInterval(delayTimerInterval);
@@ -450,11 +411,15 @@ const pixelGrid = Array.from({
   length: WIDTH
 }, () => Array(HEIGHT).fill(0));
 
+function getNthBit(byte, n) {
+  return 1 & (byte >> n);
+}
+
 function renderSprite(spriteBytes, x, y) {
   let isCollision = 0;
   for (let i = 0; i < spriteBytes.length; i++) {
     for (let j = 0; j < 8; j++) {
-      isCollision |= setPixelState(x + j, y + i, spriteBytes[i][7 - j]);
+      isCollision |= setPixelState(x + j, y + i, getNthBit(spriteBytes[i], 7 - j));
     }
   }
   VF = isCollision;
