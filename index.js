@@ -356,7 +356,8 @@ async function boot() {
       }
       case 0xF: {
         const n34 = n3 << 4 | n4;
-        const Vx = getRegisterValue(n2);
+        const x = n2;
+        const Vx = getRegisterValue(x);
         if (n34 === 0x18) {
           audioRegister = Vx;
           break;
@@ -368,6 +369,14 @@ async function boot() {
           setMemoryValue(iVal, ones);
           setMemoryValue(iVal + 1, tens);
           setMemoryValue(iVal + 2, hundreds);
+          break;
+        } else if (n34 === 0x55) {
+          for (let i = 0; i <= x; i++) {
+            setMemoryValue(
+              getIRegisterValueInt() + i,
+              getRegisterValue(x)
+            );
+          }
           break;
         } else if (n34 === 0x65) {
           const x = n2;
