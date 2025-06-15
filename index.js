@@ -4,7 +4,7 @@ const TOTAL_BYTES = 4096
 const memory = new Uint8Array(TOTAL_BYTES);
 const stack = new Uint16Array(16);
 const registers = new Uint8Array(16);
-const iRegister = 0;
+let iRegister = 0;
 let delayRegister = 0;
 let audioRegister = 0;
 let VF = 0;
@@ -194,7 +194,10 @@ async function boot() {
     switch (n1) {
       case 0x0: {
         const fullInstruction = n1 << 12 | n2 << 8 | n3 << 4 | n4;
-        if (fullInstruction === 0x00EE) {
+        if (fullInstruction === 0x00E0) {
+          clearScreen();
+          break;
+        } else if (fullInstruction === 0x00EE) {
           programCounter = getStackValue(stackPointer);
           stackPointer -= 1;
           autoIncrement = false;
@@ -344,7 +347,10 @@ async function boot() {
       case 0xF: {
         const n34 = n3 << 4 | n4;
         const Vx = getRegisterValue(n2);
-        if (n34 === 0x33) {
+        if (n34 === 0x18) {
+          audioRegister = Vx;
+          break;
+        } else if (n34 === 0x33) {
           const ones = Vx % 10;
           const tens = Math.floor(Vx / 10) % 10;
           const hundreds = Math.floor(Vx / 100) % 10;
@@ -383,7 +389,7 @@ async function boot() {
       programCounter += 2;
     }
 
-    // await new Promise(res => { setTimeout(() => { res() }, 2); });
+    await new Promise(res => { setTimeout(() => { res() }, 1); });
   }
 
   clearInterval(delayTimerInterval);
@@ -404,12 +410,16 @@ const ctx = canvas.getContext('2d');
 const DARK_COLOR = '#008';
 const LIGHT_COLOR = '#AAF';
 
-ctx.fillStyle = DARK_COLOR;
-ctx.fillRect(0, 0, WIDTH * PIXEL_SIDE_LENGTH, HEIGHT * PIXEL_SIDE_LENGTH);
+let pixelGrid = [];
+clearScreen();
 
-const pixelGrid = Array.from({
-  length: WIDTH
-}, () => Array(HEIGHT).fill(0));
+function clearScreen() {
+  ctx.fillStyle = DARK_COLOR;
+  ctx.fillRect(0, 0, WIDTH * PIXEL_SIDE_LENGTH, HEIGHT * PIXEL_SIDE_LENGTH);
+  pixelGrid = Array.from({
+    length: WIDTH
+  }, () => Array(HEIGHT).fill(0));
+}
 
 function getNthBit(byte, n) {
   return 1 & (byte >> n);
