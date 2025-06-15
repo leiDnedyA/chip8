@@ -361,6 +361,9 @@ async function boot() {
         if (n34 === 0x18) {
           audioRegister = Vx;
           break;
+        } else if (n34 === 0x1E) {
+          setIRegisterValue(Vx + getIRegisterValueInt());
+          break;
         } else if (n34 === 0x33) {
           const ones = Vx % 10;
           const tens = Math.floor(Vx / 10) % 10;
