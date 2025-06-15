@@ -7,7 +7,6 @@ const registers = new Uint8Array(16);
 let iRegister = 0;
 let delayRegister = 0;
 let audioRegister = 0;
-let VF = 0;
 let programCounter = 0x200;
 let stackPointer = 0;
 
@@ -282,24 +281,24 @@ async function boot() {
           break;
         } else if (n4 === 0x4) {
           setRegisterValue(x, ((Vx + Vy) % 256) & 0xFF);
-          VF = Vx + Vy > 255 ? 1 : 0;
+          setRegisterValue(0xF, Vx + Vy > 255 ? 1 : 0);
           break;
         } else if (n4 === 0x5) {
           setRegisterValue(x, ((Vx - Vy) % 256) & 0xFF);
-          VF = Vx > Vy ? 1 : 0;
+          setRegisterValue(0xF, Vx > Vy ? 1 : 0);
           break;
         } else if (n4 === 0x6) {
-          VF = Vx & 1;
+          setRegisterValue(0xF, Vx & 1);
           setRegisterValue(x, Math.floor(Vx / 2));
           break;
         } else if (n4 === 0x7) {
           setRegisterValue(x, ((Vy - Vx) % 256) & 0xFF);
-          VF = Vy > Vx ? 1 : 0;
+          setRegisterValue(0xF, Vy > Vx ? 1 : 0);
           break;
         } else if (n4 === 0xE) {
           setRegisterValue(x, (Vx << 1) % 256);
           if ((Vx >> 7) & 1) {
-            VF = 1;
+            setRegisterValue(0xF, 1);
           }
           break;
         }
@@ -454,7 +453,7 @@ function renderSprite(spriteBytes, x, y) {
       isCollision |= setPixelState(x + j, y + i, getNthBit(spriteBytes[i], 7 - j));
     }
   }
-  VF = isCollision;
+  setRegisterValue(0xF, isCollision ? 1 : 0);
 }
 
 function setPixelState(unwrappedX, unwrappedY, color) {
