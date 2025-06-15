@@ -296,6 +296,12 @@ async function boot() {
           setRegisterValue(x, ((Vx - Vy) % 256) & 0xFF);
           VF = Vy > Vx ? 1 : 0;
           break;
+        } else if (n4 === 0xE) {
+          setRegisterValue(x, (Vx << 1) % 256);
+          if ((Vx >> 7) & 1) {
+            VF = 1;
+          }
+          break;
         }
         console.log('UNHANDLED CASE');
         break;
