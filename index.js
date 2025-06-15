@@ -369,9 +369,9 @@ async function boot() {
           const tens = Math.floor(Vx / 10) % 10;
           const hundreds = Math.floor(Vx / 100) % 10;
           const iVal = getIRegisterValueInt();
-          setMemoryValue(iVal, ones);
+          setMemoryValue(iVal, hundreds);
           setMemoryValue(iVal + 1, tens);
-          setMemoryValue(iVal + 2, hundreds);
+          setMemoryValue(iVal + 2, ones);
           break;
         } else if (n34 === 0x55) {
           for (let i = 0; i <= x; i++) {
