@@ -377,7 +377,7 @@ async function boot() {
           for (let i = 0; i <= x; i++) {
             setMemoryValue(
               getIRegisterValueInt() + i,
-              getRegisterValue(x)
+              getRegisterValue(i)
             );
           }
           break;
