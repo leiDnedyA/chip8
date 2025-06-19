@@ -427,7 +427,10 @@ canvas.width = WIDTH * PIXEL_SIDE_LENGTH;
 canvas.height = HEIGHT * PIXEL_SIDE_LENGTH;
 
 /*--------------------- <webgl stuff> ----------------------*/
-const gl = canvas.getContext('webgl');
+const gl = canvas.getContext('webgl', {
+  alpha: false,
+  premultipliedAlpha: false
+});
 
 if (gl === null) {
   alert('Unable to initialize WebGL. Your browser or machine may not support it.');
@@ -463,13 +466,14 @@ function createProgram(gl, vertexShader, fragmentShader) {
 }
 
 const vertexShaderSource = `
-attribute vec2 a_position;
+attribute vec3 a_position;
 uniform float u_pointSize;
 
 void main() {
+  float offset = a_position.z;
   gl_Position = vec4(
-    (a_position.x / (${WIDTH}.0) - 0.5) * 2.0,
-    ((${HEIGHT}.0 - 1.0 - a_position.y) / ${HEIGHT}.0 - 0.5) * 2.0,
+    (a_position.x / (${WIDTH}.0) - 0.5) * 2.0 + offset / 100.0,
+    ((${HEIGHT}.0 - 1.0 - a_position.y) / ${HEIGHT}.0 - 0.5) * 2.0 + offset / 100.0,
     0.0, 1.0);
   gl_PointSize = u_pointSize;
 }
@@ -478,8 +482,20 @@ void main() {
 const fragmentShaderSource = `
 precision mediump float;
 
+float rand(vec2 co){
+    return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453);
+}
+
 void main() {
-  gl_FragColor = vec4(1, 0, 0.5, 1);
+  float rand = rand(gl_PointCoord);
+  vec2 coord = gl_PointCoord - vec2(0.5);
+  float dist = length(coord);
+
+  float alpha = smoothstep(0.5 * rand, 0.0, dist);
+
+  float green = smoothstep(0.5, 0.0, rand);
+
+  gl_FragColor = vec4(0, 0.5 * alpha, green, alpha);
 }
 `
 
@@ -489,13 +505,12 @@ const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource
 const program = createProgram(gl, vertexShader, fragmentShader);
 const positionAttributeLocation = gl.getAttribLocation(program, "a_position");
 const pointSizeLocation = gl.getUniformLocation(program, "u_pointSize");
-
 const positionBuffer = gl.createBuffer();
 gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
 
 gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-gl.clearColor(0, 0, 0, 0);
-gl.clear(gl.COLOR_BUFFER_BIT);
+gl.enable(gl.BLEND);
+gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
 
 gl.useProgram(program);
 gl.enableVertexAttribArray(positionAttributeLocation);
@@ -504,19 +519,18 @@ gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
 
 /*--------------------- </webgl stuff> ----------------------*/
 
-const DARK_COLOR = '#008';
-const LIGHT_COLOR = '#AAF';
-
 let pixelGrid = [];
-clearScreen();
+let previousPixelGrid = [];
 
 function clearScreen() {
-  // ctx.fillStyle = DARK_COLOR;
-  // ctx.fillRect(0, 0, WIDTH * PIXEL_SIDE_LENGTH, HEIGHT * PIXEL_SIDE_LENGTH);
   pixelGrid = Array.from({
     length: WIDTH
   }, () => Array(HEIGHT).fill(0));
+  previousPixelGrid = Array.from({
+    length: WIDTH
+  }, () => Array(HEIGHT).fill(0));
 }
+clearScreen();
 
 function getNthBit(byte, n) {
   return 1 & (byte >> n);
@@ -539,14 +553,17 @@ function render() {
       if (pixelGrid[i][j]) {
         arr.push(i);
         arr.push(j);
+        arr.push(Math.random());
       }
     }
   }
   const buffer = new Float32Array(arr);
+  gl.clearColor(0.0, 0.0, 0.0, 1.0);
+  gl.clear(gl.COLOR_BUFFER_BIT);
   gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
   gl.bufferData(gl.ARRAY_BUFFER, buffer, gl.STATIC_DRAW);
-  gl.uniform1f(pointSizeLocation, 10.0);
-  var size = 2;
+  gl.uniform1f(pointSizeLocation, 80.0);
+  var size = 3;
   var type = gl.FLOAT;
   var normalize = false;
   var stride = 0;
@@ -554,7 +571,7 @@ function render() {
   gl.vertexAttribPointer(positionAttributeLocation, size, type, normalize, stride, offset);
   var primitiveType = gl.POINTS;
   var offset = 0;
-  gl.drawArrays(primitiveType, offset, arr.length / 2);
+  gl.drawArrays(primitiveType, offset, arr.length / size);
 }
 
 function setPixelState(unwrappedX, unwrappedY, color) {
