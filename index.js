@@ -184,9 +184,7 @@ async function boot() {
     const n3 = (opcode & 0x00F0) >> 4;
     const n4 = (opcode & 0x000F);
 
-
-
-    console.log(n1.toString(16), n2.toString(16), n3.toString(16), n4.toString(16))
+    // console.log(n1.toString(16), n2.toString(16), n3.toString(16), n4.toString(16))
 
     let autoIncrement = true;
 
@@ -410,6 +408,7 @@ async function boot() {
       programCounter += 2;
     }
 
+    render();
     await new Promise(res => { setTimeout(() => { res() }, 1); });
   }
 
@@ -464,11 +463,14 @@ function createProgram(gl, vertexShader, fragmentShader) {
 }
 
 const vertexShaderSource = `
-attribute vec4 a_position;
+attribute vec2 a_position;
 uniform float u_pointSize;
 
 void main() {
-  gl_Position = a_position;
+  gl_Position = vec4(
+    (a_position.x / (${WIDTH}.0) - 0.5) * 2.0,
+    ((${HEIGHT}.0 - 1.0 - a_position.y) / ${HEIGHT}.0 - 0.5) * 2.0,
+    0.0, 1.0);
   gl_PointSize = u_pointSize;
 }
 `;
@@ -491,15 +493,7 @@ const pointSizeLocation = gl.getUniformLocation(program, "u_pointSize");
 const positionBuffer = gl.createBuffer();
 gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
 
-const positions = [
-  0, 0,
-  0, 0.5,
-  0.7, 0
-];
-gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
-
 gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-
 gl.clearColor(0, 0, 0, 0);
 gl.clear(gl.COLOR_BUFFER_BIT);
 
@@ -508,74 +502,86 @@ gl.enableVertexAttribArray(positionAttributeLocation);
 
 gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
 
-gl.uniform1f(pointSizeLocation, 10.0);
-var size = 2;
-var type = gl.FLOAT;
-var normalize = false;
-var stride = 0;
-var offset = 0;
-gl.vertexAttribPointer(positionAttributeLocation, size, type, normalize, stride, offset);
-var primitiveType = gl.POINTS;
-var offset = 0;
-var count = 3;
-gl.drawArrays(primitiveType, offset, count);
-
 /*--------------------- </webgl stuff> ----------------------*/
 
-// const DARK_COLOR = '#008';
-// const LIGHT_COLOR = '#AAF';
-//
-// let pixelGrid = [];
-// clearScreen();
-//
-// function clearScreen() {
-//   ctx.fillStyle = DARK_COLOR;
-//   ctx.fillRect(0, 0, WIDTH * PIXEL_SIDE_LENGTH, HEIGHT * PIXEL_SIDE_LENGTH);
-//   pixelGrid = Array.from({
-//     length: WIDTH
-//   }, () => Array(HEIGHT).fill(0));
-// }
-//
-// function getNthBit(byte, n) {
-//   return 1 & (byte >> n);
-// }
-//
-// function renderSprite(spriteBytes, x, y) {
-//   let isCollision = 0;
-//   for (let i = 0; i < spriteBytes.length; i++) {
-//     for (let j = 0; j < 8; j++) {
-//       isCollision |= setPixelState(x + j, y + i, getNthBit(spriteBytes[i], 7 - j));
-//     }
-//   }
-//   setRegisterValue(0xF, isCollision ? 1 : 0);
-// }
-//
-// function setPixelState(unwrappedX, unwrappedY, color) {
-//   const x = unwrappedX % WIDTH;
-//   const y = unwrappedY % HEIGHT;
-//
-//   const currPixelValue = pixelGrid?.[x]?.[y];
-//   const newPixelValue = currPixelValue ^ color;
-//   ctx.fillStyle = newPixelValue ? LIGHT_COLOR : DARK_COLOR;
-//   const isCollision = (currPixelValue & color);
-//   pixelGrid[x][y] = newPixelValue;
-//   ctx.fillRect(x * PIXEL_SIDE_LENGTH, y * PIXEL_SIDE_LENGTH, PIXEL_SIDE_LENGTH, PIXEL_SIDE_LENGTH);
-//   return isCollision ? 1 : 0;
-// }
-//
-// fileInput.addEventListener('change', (event) => {
-//   const file = event.target.files[0];
-//   const reader = new FileReader();
-//   reader.onload = (e) => {
-//     const arrayBuffer = e.target.result;
-//     const dataView = new DataView(arrayBuffer);
-//     loadRomIntoMemory(dataView);
-//     boot();
-//   };
-//   reader.readAsArrayBuffer(file);
-// });
-//
-// window.onload = () => {
-//   const killButton = document.getElementById('killButton');
-//   killButton.addEventListener('click', () => { killed = true; })
-// }
+const DARK_COLOR = '#008';
+const LIGHT_COLOR = '#AAF';
+
+let pixelGrid = [];
+clearScreen();
+
+function clearScreen() {
+  // ctx.fillStyle = DARK_COLOR;
+  // ctx.fillRect(0, 0, WIDTH * PIXEL_SIDE_LENGTH, HEIGHT * PIXEL_SIDE_LENGTH);
+  pixelGrid = Array.from({
+    length: WIDTH
+  }, () => Array(HEIGHT).fill(0));
+}
+
+function getNthBit(byte, n) {
+  return 1 & (byte >> n);
+}
+
+function renderSprite(spriteBytes, x, y) {
+  let isCollision = 0;
+  for (let i = 0; i < spriteBytes.length; i++) {
+    for (let j = 0; j < 8; j++) {
+      isCollision |= setPixelState(x + j, y + i, getNthBit(spriteBytes[i], 7 - j));
+    }
+  }
+  setRegisterValue(0xF, isCollision ? 1 : 0);
+}
+
+function render() {
+  const arr = [];
+  for (let i = 0; i < WIDTH; i++) {
+    for (let j = 0; j < HEIGHT; j++) {
+      if (pixelGrid[i][j]) {
+        arr.push(i);
+        arr.push(j);
+      }
+    }
+  }
+  const buffer = new Float32Array(arr);
+  gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, buffer, gl.STATIC_DRAW);
+  gl.uniform1f(pointSizeLocation, 10.0);
+  var size = 2;
+  var type = gl.FLOAT;
+  var normalize = false;
+  var stride = 0;
+  var offset = 0;
+  gl.vertexAttribPointer(positionAttributeLocation, size, type, normalize, stride, offset);
+  var primitiveType = gl.POINTS;
+  var offset = 0;
+  gl.drawArrays(primitiveType, offset, arr.length / 2);
+}
+
+function setPixelState(unwrappedX, unwrappedY, color) {
+  const x = unwrappedX % WIDTH;
+  const y = unwrappedY % HEIGHT;
+
+  const currPixelValue = pixelGrid?.[x]?.[y];
+  const newPixelValue = currPixelValue ^ color;
+
+  const isCollision = (currPixelValue & color);
+  pixelGrid[x][y] = newPixelValue;
+  return isCollision ? 1 : 0;
+}
+
+fileInput.addEventListener('change', (event) => {
+  const file = event.target.files[0];
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const arrayBuffer = e.target.result;
+    const dataView = new DataView(arrayBuffer);
+    loadRomIntoMemory(dataView);
+    boot();
+  };
+  reader.readAsArrayBuffer(file);
+});
+
+window.onload = () => {
+  const killButton = document.getElementById('killButton');
+  killButton.addEventListener('click', () => { killed = true; })
+}
