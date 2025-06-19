@@ -426,62 +426,156 @@ const HEIGHT = 32;
 const canvas = document.querySelector('#canvas');
 canvas.width = WIDTH * PIXEL_SIDE_LENGTH;
 canvas.height = HEIGHT * PIXEL_SIDE_LENGTH;
-const ctx = canvas.getContext('2d');
 
-const DARK_COLOR = '#008';
-const LIGHT_COLOR = '#AAF';
+/*--------------------- <webgl stuff> ----------------------*/
+const gl = canvas.getContext('webgl');
 
-let pixelGrid = [];
-clearScreen();
-
-function clearScreen() {
-  ctx.fillStyle = DARK_COLOR;
-  ctx.fillRect(0, 0, WIDTH * PIXEL_SIDE_LENGTH, HEIGHT * PIXEL_SIDE_LENGTH);
-  pixelGrid = Array.from({
-    length: WIDTH
-  }, () => Array(HEIGHT).fill(0));
+if (gl === null) {
+  alert('Unable to initialize WebGL. Your browser or machine may not support it.');
 }
 
-function getNthBit(byte, n) {
-  return 1 & (byte >> n);
-}
+gl.clearColor(0.0, 0.0, 0.0, 1.0);
+gl.clear(gl.COLOR_BUFFER_BIT);
 
-function renderSprite(spriteBytes, x, y) {
-  let isCollision = 0;
-  for (let i = 0; i < spriteBytes.length; i++) {
-    for (let j = 0; j < 8; j++) {
-      isCollision |= setPixelState(x + j, y + i, getNthBit(spriteBytes[i], 7 - j));
-    }
+function createShader(gl, type, source) {
+  const shader = gl.createShader(type);
+  gl.shaderSource(shader, source);
+  gl.compileShader(shader);
+  const success = gl.getShaderParameter(shader, gl.COMPILE_STATUS);
+  if (success) {
+    return shader;
   }
-  setRegisterValue(0xF, isCollision ? 1 : 0);
+  console.log(gl.getShaderInfoLog(shader));
+  gl.deleteShader(shader);
 }
 
-function setPixelState(unwrappedX, unwrappedY, color) {
-  const x = unwrappedX % WIDTH;
-  const y = unwrappedY % HEIGHT;
+function createProgram(gl, vertexShader, fragmentShader) {
+  var program = gl.createProgram();
+  gl.attachShader(program, vertexShader);
+  gl.attachShader(program, fragmentShader);
+  gl.linkProgram(program);
+  var success = gl.getProgramParameter(program, gl.LINK_STATUS);
+  if (success) {
+    return program;
+  }
 
-  const currPixelValue = pixelGrid?.[x]?.[y];
-  const newPixelValue = currPixelValue ^ color;
-  ctx.fillStyle = newPixelValue ? LIGHT_COLOR : DARK_COLOR;
-  const isCollision = (currPixelValue & color);
-  pixelGrid[x][y] = newPixelValue;
-  ctx.fillRect(x * PIXEL_SIDE_LENGTH, y * PIXEL_SIDE_LENGTH, PIXEL_SIDE_LENGTH, PIXEL_SIDE_LENGTH);
-  return isCollision ? 1 : 0;
+  console.log(gl.getProgramInfoLog(program));
+  gl.deleteProgram(program);
 }
 
-fileInput.addEventListener('change', (event) => {
-  const file = event.target.files[0];
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const arrayBuffer = e.target.result;
-    const dataView = new DataView(arrayBuffer);
-    loadRomIntoMemory(dataView);
-    boot();
-  };
-  reader.readAsArrayBuffer(file);
-});
+const vertexShaderSource = `
+attribute vec4 a_position;
+uniform float u_pointSize;
 
-window.onload = () => {
-  const killButton = document.getElementById('killButton');
-  killButton.addEventListener('click', () => { killed = true; })
+void main() {
+  gl_Position = a_position;
+  gl_PointSize = u_pointSize;
 }
+`;
+
+const fragmentShaderSource = `
+precision mediump float;
+
+void main() {
+  gl_FragColor = vec4(1, 0, 0.5, 1);
+}
+`
+
+const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
+const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
+
+const program = createProgram(gl, vertexShader, fragmentShader);
+const positionAttributeLocation = gl.getAttribLocation(program, "a_position");
+const pointSizeLocation = gl.getUniformLocation(program, "u_pointSize");
+
+const positionBuffer = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+
+const positions = [
+  0, 0,
+  0, 0.5,
+  0.7, 0
+];
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
+
+gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+
+gl.clearColor(0, 0, 0, 0);
+gl.clear(gl.COLOR_BUFFER_BIT);
+
+gl.useProgram(program);
+gl.enableVertexAttribArray(positionAttributeLocation);
+
+gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+
+gl.uniform1f(pointSizeLocation, 10.0);
+var size = 2;
+var type = gl.FLOAT;
+var normalize = false;
+var stride = 0;
+var offset = 0;
+gl.vertexAttribPointer(positionAttributeLocation, size, type, normalize, stride, offset);
+var primitiveType = gl.POINTS;
+var offset = 0;
+var count = 3;
+gl.drawArrays(primitiveType, offset, count);
+
+/*--------------------- </webgl stuff> ----------------------*/
+
+// const DARK_COLOR = '#008';
+// const LIGHT_COLOR = '#AAF';
+//
+// let pixelGrid = [];
+// clearScreen();
+//
+// function clearScreen() {
+//   ctx.fillStyle = DARK_COLOR;
+//   ctx.fillRect(0, 0, WIDTH * PIXEL_SIDE_LENGTH, HEIGHT * PIXEL_SIDE_LENGTH);
+//   pixelGrid = Array.from({
+//     length: WIDTH
+//   }, () => Array(HEIGHT).fill(0));
+// }
+//
+// function getNthBit(byte, n) {
+//   return 1 & (byte >> n);
+// }
+//
+// function renderSprite(spriteBytes, x, y) {
+//   let isCollision = 0;
+//   for (let i = 0; i < spriteBytes.length; i++) {
+//     for (let j = 0; j < 8; j++) {
+//       isCollision |= setPixelState(x + j, y + i, getNthBit(spriteBytes[i], 7 - j));
+//     }
+//   }
+//   setRegisterValue(0xF, isCollision ? 1 : 0);
+// }
+//
+// function setPixelState(unwrappedX, unwrappedY, color) {
+//   const x = unwrappedX % WIDTH;
+//   const y = unwrappedY % HEIGHT;
+//
+//   const currPixelValue = pixelGrid?.[x]?.[y];
+//   const newPixelValue = currPixelValue ^ color;
+//   ctx.fillStyle = newPixelValue ? LIGHT_COLOR : DARK_COLOR;
+//   const isCollision = (currPixelValue & color);
+//   pixelGrid[x][y] = newPixelValue;
+//   ctx.fillRect(x * PIXEL_SIDE_LENGTH, y * PIXEL_SIDE_LENGTH, PIXEL_SIDE_LENGTH, PIXEL_SIDE_LENGTH);
+//   return isCollision ? 1 : 0;
+// }
+//
+// fileInput.addEventListener('change', (event) => {
+//   const file = event.target.files[0];
+//   const reader = new FileReader();
+//   reader.onload = (e) => {
+//     const arrayBuffer = e.target.result;
+//     const dataView = new DataView(arrayBuffer);
+//     loadRomIntoMemory(dataView);
+//     boot();
+//   };
+//   reader.readAsArrayBuffer(file);
+// });
+//
+// window.onload = () => {
+//   const killButton = document.getElementById('killButton');
+//   killButton.addEventListener('click', () => { killed = true; })
+// }
