@@ -3,12 +3,18 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Chip8 Pong | Ayden Diel</title>
+    <title>JavaScript Chip8 | Ayden Diel</title>
     <style>
       html {
         background-color: black;
         color: white;
         font-family: monospace;
+      }
+      h1, h2, h3 {
+        margin-bottom: 0;
+      }
+      .author {
+        color: #a8a;
       }
       #canvas {
         border: 1px solid #333;
@@ -39,8 +45,17 @@
   <body>
     <div id="container">
       <h1>JavaScript Chip-8 Emulator</h1>
+      <p class="author">@author Ayden Diel</p>
       <canvas id="canvas"></canvas>
       <button id="killStartButton">kill</button>
+      <h2>Controls</h2>
+      <h3>For Pong</h3>
+      <ul>
+        <li><em>1</em>: left up</li>
+        <li><em>q</em>: left down</li>
+        <li><em>4</em>: right up</li>
+        <li><em>r</em>: right down</li>
+      </ul>
     </div>
     <script src="./index.js"></script>
   </body>
