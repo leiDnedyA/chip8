@@ -1,16 +1,18 @@
 // const fileInput = document.getElementById('fileInput');
 const TOTAL_BYTES = 4096
 
-const memory = new Uint8Array(TOTAL_BYTES);
-const stack = new Uint16Array(16);
-const registers = new Uint8Array(16);
+let romDataView = null;
+
+let memory = new Uint8Array(TOTAL_BYTES);
+let stack = new Uint16Array(16);
+let registers = new Uint8Array(16);
 let iRegister = 0;
 let delayRegister = 0;
 let audioRegister = 0;
 let programCounter = 0x200;
 let stackPointer = 0;
 
-const keysDown = {
+let keysDown = {
   0x0: false,
   0x1: false,
   0x2: false,
@@ -164,7 +166,21 @@ function keyUpCallback(e) {
 }
 
 async function boot() {
+  console.log('booting...')
+  clearScreen();
+  for (let key of Object.keys(keysDown)) {
+    keysDown[key] = false;
+  }
+  memory = new Uint8Array(TOTAL_BYTES);
+  stack = new Uint16Array(16);
+  registers = new Uint8Array(16);
+  iRegister = 0;
+  delayRegister = 0;
+  audioRegister = 0;
+  programCounter = 0x200;
+  stackPointer = 0;
   loadHexDigitSprites();
+  loadRomIntoMemory(romDataView);
 
   const delayTimerInterval = setInterval(() => {
     if (delayRegister > 0) {
@@ -626,12 +642,15 @@ reader.readAsArrayBuffer(file);
 */
 
 window.onload = async () => {
-  const killButton = document.getElementById('killButton');
-  killButton.addEventListener('click', () => { killed = true; })
+  const killStartButton = document.getElementById('killStartButton');
+  killStartButton.addEventListener('click', () => {
+    killed = !killed;
+    if (!killed) boot(); // restart
+    killStartButton.innerText = killed ? 'start' : 'kill';
+  })
 
   const response = await fetch('./pong.ch8')
   const blob = await response.blob();
-  const dataView = new DataView(await blob.arrayBuffer());
-  loadRomIntoMemory(dataView);
+  romDataView = new DataView(await blob.arrayBuffer());
   boot();
 }
