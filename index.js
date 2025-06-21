@@ -561,13 +561,9 @@ gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
 /*--------------------- </webgl stuff> ----------------------*/
 
 let pixelGrid = [];
-let previousPixelGrid = [];
 
 function clearScreen() {
   pixelGrid = Array.from({
-    length: WIDTH
-  }, () => Array(HEIGHT).fill(0));
-  previousPixelGrid = Array.from({
     length: WIDTH
   }, () => Array(HEIGHT).fill(0));
 }
