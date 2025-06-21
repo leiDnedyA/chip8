@@ -7,17 +7,41 @@
     <style>
       html {
         background-color: black;
+        color: white;
+        font-family: monospace;
       }
       #canvas {
         border: 1px solid #333;
       }
+      #container {
+        padding-left: 20%;
+        padding-right: 20%;
+        box-sizing: border-box;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      #killButton {
+        width: fit-content;
+        background-color: #222;
+        border: 1px solid #333;
+        font-size: 1.2em;
+        border-radius: 2px;
+        color: white;
+      }
+      #killButton:hover {
+        background-color: black;
+        cursor: pointer;
+      }
     </style>
   </head>
   <body>
-    <canvas id="canvas"></canvas>
-    <!-- <input id="fileInput" type="file"></input> -->
-    <button id="killButton">kill</button>
-    <!-- <button id="startButton">start</button> -->
+    <div id="container">
+      <h1>JavaScript Chip-8 Emulator</h1>
+      <canvas id="canvas"></canvas>
+      <button id="killButton">kill</button>
+    </div>
     <script src="./index.js"></script>
   </body>
 </html>
