@@ -1,4 +1,4 @@
-const fileInput = document.getElementById('fileInput');
+// const fileInput = document.getElementById('fileInput');
 const TOTAL_BYTES = 4096
 
 const memory = new Uint8Array(TOTAL_BYTES);
@@ -469,6 +469,8 @@ const vertexShaderSource = `
 attribute vec3 a_position;
 uniform float u_pointSize;
 
+varying vec4 clipPosition;
+
 void main() {
   float offset = a_position.z;
   gl_Position = vec4(
@@ -476,26 +478,27 @@ void main() {
     ((${HEIGHT}.0 - 1.0 - a_position.y) / ${HEIGHT}.0 - 0.5) * 2.0 + offset / 100.0,
     0.0, 1.0);
   gl_PointSize = u_pointSize;
+  clipPosition = u_pointSize;
 }
 `;
 
 const fragmentShaderSource = `
 precision mediump float;
 
+varying vec4 clipPosition;
+
 float rand(vec2 co){
-    return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453);
+    return sin(dot(co, vec2(12.9898, 78.233))) / 8.0;
 }
 
 void main() {
   float rand = rand(gl_PointCoord);
   vec2 coord = gl_PointCoord - vec2(0.5);
   float dist = length(coord);
-
-  float alpha = smoothstep(0.5 * rand, 0.0, dist);
-
+  float alpha = smoothstep(0.5, 0.0, dist);
   float green = smoothstep(0.5, 0.0, rand);
 
-  gl_FragColor = vec4(0, 0.5 * alpha, green, alpha);
+  gl_FragColor = vec4((alpha + rand / 2.0) / rand, 0.5 * alpha, green, alpha);
 }
 `
 
@@ -586,19 +589,27 @@ function setPixelState(unwrappedX, unwrappedY, color) {
   return isCollision ? 1 : 0;
 }
 
+/*
 fileInput.addEventListener('change', (event) => {
-  const file = event.target.files[0];
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const arrayBuffer = e.target.result;
-    const dataView = new DataView(arrayBuffer);
-    loadRomIntoMemory(dataView);
-    boot();
-  };
-  reader.readAsArrayBuffer(file);
+const file = event.target.files[0];
+const reader = new FileReader();
+reader.onload = (e) => {
+const arrayBuffer = e.target.result;
+const dataView = new DataView(arrayBuffer);
+loadRomIntoMemory(dataView);
+boot();
+};
+reader.readAsArrayBuffer(file);
 });
+*/
 
-window.onload = () => {
+window.onload = async () => {
   const killButton = document.getElementById('killButton');
   killButton.addEventListener('click', () => { killed = true; })
+
+  const response = await fetch('./pong.ch8')
+  const blob = await response.blob();
+  const dataView = new DataView(await blob.arrayBuffer());
+  loadRomIntoMemory(dataView);
+  boot();
 }
