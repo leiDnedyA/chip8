@@ -45,7 +45,7 @@
   <body>
     <div id="container">
       <h1>JavaScript + WebGL Chip-8 Emulator</h1>
-      <p class="author">@author Ayden Diel</p>
+      <p><a class="author" href="https://aydendiel.dev/">@author Ayden Diel</a></p>
       <canvas id="canvas"></canvas>
       <div>
         <button id="killStartButton">kill</button>
@@ -56,7 +56,7 @@
         </select>
       </div>
       <h2>Controls</h2>
-      <div>
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr);">
         <div>
           <h3>Pong</h3>
           <ul>
@@ -64,6 +64,15 @@
             <li><em>q</em>: left down</li>
             <li><em>4</em>: right up</li>
             <li><em>r</em>: right down</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Snake</h3>
+          <ul>
+            <li><em>w</em>: up</li>
+            <li><em>a</em>: left</li>
+            <li><em>s</em>: down</li>
+            <li><em>d</em>: right</li>
           </ul>
         </div>
         <div>
