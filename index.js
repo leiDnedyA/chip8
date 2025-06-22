@@ -191,7 +191,9 @@ async function boot() {
   window.addEventListener('keydown', keyDownCallback);
   window.addEventListener('keyup', keyUpCallback);
 
+  let i = 0;
   while (!killed) {
+    i++;
     const opcode = (getMemoryValue(programCounter) << 8) | getMemoryValue(programCounter + 1);
 
     // Nibbles
@@ -425,7 +427,9 @@ async function boot() {
     }
 
     render();
-    await new Promise(res => { setTimeout(() => { res() }, 1); });
+    if (i % 3 === 0) {
+      await new Promise(res => setTimeout(() => res(), 1));
+    }
   }
 
   clearInterval(delayTimerInterval);
@@ -645,7 +649,8 @@ window.onload = async () => {
     killStartButton.innerText = killed ? 'start' : 'kill';
   })
 
-  const response = await fetch('./pong.ch8')
+  // const response = await fetch('./pong.ch8')
+  const response = await fetch('./PONG2')
   const blob = await response.blob();
   romDataView = new DataView(await blob.arrayBuffer());
   boot();
