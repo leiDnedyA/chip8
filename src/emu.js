@@ -372,10 +372,15 @@ async function boot(romDataView) {
       }
       case 0xE: {
         const n23 = n3 << 4 | n4;
+        const x = n2;
+        const Vx = getRegisterValue(x);
         if (n23 === 0xA1) {
-          const x = n2;
-          const Vx = getRegisterValue(x);
           if (!keysDown[Vx]) {
+            programCounter += 2;
+          }
+          break;
+        } else if (n23 === 0x9E) {
+          if (keysDown[Vx]) {
             programCounter += 2;
           }
           break;
