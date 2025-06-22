@@ -38,6 +38,11 @@ let triggerKill = false;
 
 async function kill() {
   triggerKill = true;
+  while (!killed) {
+    await new Promise(res => setTimeout(_ => res(), 1));
+  }
+  console.log('killed.');
+  return;
 }
 
 /*
@@ -202,7 +207,7 @@ async function boot(romDataView) {
   window.addEventListener('keyup', keyUpCallback);
 
   let i = 0;
-  while (!triggerKill) {
+  while (!triggerKill && !killed) {
     i++;
     const opcode = (getMemoryValue(programCounter) << 8) | getMemoryValue(programCounter + 1);
 
@@ -453,7 +458,7 @@ async function boot(romDataView) {
     }
 
     render();
-    if (i % 1 === 0) {
+    if (i % 3 === 0) {
       await new Promise(res => setTimeout(() => res(), 1));
     }
   }

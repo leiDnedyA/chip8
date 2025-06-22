@@ -14,12 +14,12 @@ window.onload = async function() {
   killStartButton.addEventListener('click', async function() {
     if (killed) await boot(romDataView); // restart
     else kill();
-    killStartButton.innerText = killed ? 'start' : 'kill';
+    killStartButton.innerText = !killed ? 'start' : 'kill';
   })
 
   const romDropdown = document.getElementById('gameDropdown');
   romDropdown.addEventListener('change', async function(e) {
-    await kill();
+    kill();
     loadRomFromUrl(e.target.value).then(async function() {
       await boot(romDataView);
     })
