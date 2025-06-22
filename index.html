@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>JavaScript Chip8 | Ayden Diel</title>
+    <title>JavaScript + WebGL Chip8 | Ayden Diel</title>
     <style>
       html {
         background-color: black;
@@ -44,10 +44,17 @@
   </head>
   <body>
     <div id="container">
-      <h1>JavaScript Chip-8 Emulator</h1>
+      <h1>JavaScript + WebGL Chip-8 Emulator</h1>
       <p class="author">@author Ayden Diel</p>
       <canvas id="canvas"></canvas>
-      <button id="killStartButton">kill</button>
+      <div>
+        <button id="killStartButton">kill</button>
+        <select name="gameDropdown" id="gameDropdown">
+          <option value="./PONG2">pong</option>
+          <option value="./wonkypong.ch8">wonkypong</option>
+          <option value="./snake.ch8">snake</option>
+        </select>
+      </div>
       <h2>Controls</h2>
       <h3>For Pong</h3>
       <ul>
@@ -56,7 +63,12 @@
         <li><em>4</em>: right up</li>
         <li><em>r</em>: right down</li>
       </ul>
+      <h2>ROM Authors</h2>
+      <ul>
+        <li>pong: <a href="https://github.com/badlogic">Mario Zechner (badlogic)</a></li>
+        <li>wonkypong: <a href="TomRintjema">TomRintjema</a></li>
+      </ul>
     </div>
-    <script src="./index.js"></script>
+    <script type="module" src="./index.js"></script>
   </body>
 </html>
