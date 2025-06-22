@@ -11,6 +11,9 @@ let audioRegister = 0;
 let programCounter = 0x200;
 let stackPointer = 0;
 
+// For http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#Fx0A instruction
+let awaitingKeyPress = false;
+let lastKeyValue = 0;
 let keysDown = {
   0x0: false,
   0x1: false,
@@ -162,6 +165,8 @@ const keyboardToHardwareKeys = {
 }
 
 function keyDownCallback(e) {
+  awaitingKeyPress = false;
+  lastKeyValue = keyboardToHardwareKeys[e.key.toLowerCase()];
   keysDown[keyboardToHardwareKeys[e.key.toLowerCase()]] = true;
 }
 
@@ -422,6 +427,13 @@ async function boot(romDataView) {
         } else if (n34 === 0x07) {
           setRegisterValue(n2, getDelayTimerValue());
           break;
+        } else if (n34 === 0x0A) {
+          awaitingKeyPress = true;
+          while (awaitingKeyPress) {
+            await new Promise(res => setTimeout(_ => res(), 1));
+          }
+          setRegisterValue(n2, lastKeyValue);
+          break;
         }
         console.log('UNHANDLED CASE');
         break;
@@ -436,7 +448,7 @@ async function boot(romDataView) {
     }
 
     render();
-    if (i % 3 === 0) {
+    if (i % 1 === 0) {
       await new Promise(res => setTimeout(() => res(), 1));
     }
   }
